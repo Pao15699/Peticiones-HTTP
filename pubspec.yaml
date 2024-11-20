@@ -1,21 +1,22 @@
 name: pokemon_list_app
-description: Una aplicación Flutter para mostrar una lista de Pokémon.
+description: Aplicación Flutter que muestra una lista de Pokémon usando Firebase y PokéAPI.
 
-
-version: 1.0.0+1
-
+# Versión del entorno de Dart
 environment:
   sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  firebase_core: ^2.15.0
+  cloud_firestore: ^4.12.0
   http: ^1.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
 
+# Para asegurarte de que Flutter usa un diseño responsive
 flutter:
   uses-material-design: true
+

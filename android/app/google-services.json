@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "295539728224",
+    "project_id": "integracion-base-de-dato-15355",
+    "storage_bucket": "integracion-base-de-dato-15355.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:295539728224:android:29bbbceecefdbf53730805",
+        "android_client_info": {
+          "package_name": "mi.base.company.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0krQtdo8wgzhX3he8f6hkDNuvkPSpwXs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

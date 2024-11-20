@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(MyApp());
 }
 
@@ -12,7 +16,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Lista de Pokémon',
       theme: ThemeData(
-        primarySwatch: Colors.red,
+        primarySwatch: Colors.blue,
       ),
       home: PokemonListPage(),
     );
@@ -25,25 +29,14 @@ class PokemonListPage extends StatefulWidget {
 }
 
 class _PokemonListPageState extends State<PokemonListPage> {
-  List<String> pokemonList = [];
   int offset = 0;
-  final int limit = 20;
+  int limit = 20;
   bool isLoading = false;
-  bool hasMore = true;
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     fetchPokemonList();
-    _scrollController.addListener(() {
-      if (_scrollController.position.pixels >=
-              _scrollController.position.maxScrollExtent - 200 &&
-          !isLoading &&
-          hasMore) {
-        fetchPokemonList();
-      }
-    });
   }
 
   Future<void> fetchPokemonList() async {
@@ -56,27 +49,28 @@ class _PokemonListPageState extends State<PokemonListPage> {
     try {
       final response = await http.get(Uri.parse(
           'https://pokeapi.co/api/v2/pokemon?offset=$offset&limit=$limit'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final results = data['results'] as List;
 
-        setState(() {
-          pokemonList
-              .addAll(results.map((pokemon) => pokemon['name'].toString()).toList());
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final List<dynamic> results = decoded['results'];
+
+        for (var pokemonData in results) {
+          final pokemonName = pokemonData['name'];
+          await FirebaseFirestore.instance.collection('pokemons').add({
+            'name': pokemonName,
+          });
+        }
+
+        final nextUrl = decoded['next'];
+        if (nextUrl != null) {
           offset += limit;
-          hasMore = data['next'] != null;
-        });
+        }
       } else {
-        // Manejo de error por código de estado no exitoso
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error en la API: ${response.statusCode}')),
-        );
+        throw Exception(
+            'Error al cargar la lista de Pokémon. Código de estado: ${response.statusCode}');
       }
     } catch (e) {
-      // Manejo de error de red
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error de red: $e')),
-      );
+      print('Error: $e');
     } finally {
       setState(() {
         isLoading = false;
@@ -85,64 +79,30 @@ class _PokemonListPageState extends State<PokemonListPage> {
   }
 
   @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _refreshList() async {
-    setState(() {
-      pokemonList.clear();
-      offset = 0;
-      hasMore = true;
-    });
-    await fetchPokemonList();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text('Lista de Pokémon'),
       ),
-      body: RefreshIndicator(
-        onRefresh: _refreshList,
-        child: pokemonList.isEmpty
-            ? isLoading
-                ? Center(
-                    child: CircularProgressIndicator(),
-                  )
-                : Center(
-                    child: Text('No se encontraron Pokémon.'),
-                  )
-            : ListView.builder(
-                controller: _scrollController,
-                itemCount: pokemonList.length + (hasMore ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == pokemonList.length) {
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance.collection('pokemons').snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
 
-                    return Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
-                  }
-                  return ListTile(
-                    leading: CircleAvatar(
-                      child: Text(
-                        '${index + 1}',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                    title: Text(
-                      pokemonList[index].toUpperCase(),
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  );
-                },
-              ),
+          final pokemons = snapshot.data!.docs;
+
+          return ListView.builder(
+            itemCount: pokemons.length,
+            itemBuilder: (context, index) {
+              final pokemon = pokemons[index];
+              return ListTile(
+                title: Text(pokemon['name']),
+              );
+            },
+          );
+        },
       ),
     );
   }
